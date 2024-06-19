@@ -6,7 +6,7 @@ export class Api {
     token = '';
 
     constructor() {
-        this.urlBase = 'http://localhost:3000/';
+        this.urlBase = 'http://localhost:3001/';
         this.token = JSON.parse(localStorage.getItem('user_logged'));
         if (this.token){
             axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
