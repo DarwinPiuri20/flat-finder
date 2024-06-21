@@ -46,11 +46,11 @@ export default function LoginForm() {
           minHeight: '80vh',
           p: 2
         }}
-        className="bg-white bg-opacity-30 rounded-lg p-8 shadow-lg"
+        className="bg-white bg-opacity-30 rounded-lg p-8 shadow-2xl shadow-violet-900"
       >
-        <Typography variant="h4" gutterBottom className='text-white'>
+        <h1 className='mb-20 font-mono text-[#800080] text-6xl font-bold'>
           Login
-        </Typography>
+        </h1>
         {errorAlert && (
           <Typography color="error" sx={{ mb: 2 }}>
             {errorAlert}
@@ -59,36 +59,46 @@ export default function LoginForm() {
         <Box component="form" onSubmit={handleLogin} sx={{ width: '100%', maxWidth: 360 }}>
           <TextField
             label="Email"
+            color='secondary'
             type="email"
             inputRef={emailRef}
             required
             fullWidth
-            sx={{ mb: 2 }}
+            sx={{ mb: 2}}
           />
           <TextField
             label="Password"
+            color='secondary'
             type="password"
             inputRef={passwordRef}
             required
             fullWidth
             sx={{ mb: 2 }}
           />
+          <Typography variant='body2'>
+            Forgot your password?
+            <a href="/forgot-password" className='text-[#800080] '>Reset password</a>
+          </Typography>
           <Button
             type="submit"
             variant="contained"
             disabled={isProgress}
             fullWidth
-            sx={{ mb: 2,
-                backgroundColor: 'black',
+            sx={{mt: 3, 
+              mb: 2,
+                backgroundColor: 'purple',
                 
                 color: 'white',
                 '&:hover': {
-                  backgroundColor: '#333',
+                  backgroundColor: '#581c87 ',
                 },
             }}
           >
             {isProgress ? 'Logging in...' : 'Login'}
           </Button>
+          <Typography variant='body2' className='text-black'>
+            Don't have an account? <a href="/register" className='text-[#800080] '>Register</a>
+          </Typography>
         </Box>
       </Box>
       </Box>
