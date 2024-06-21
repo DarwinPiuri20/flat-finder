@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt= require('bcryptjs');
+const{v4:uuidv4}= require('uuid');
 const Schema= mongoose.Schema;
 const UserSchema = new Schema({
     email:{
@@ -45,6 +46,8 @@ const UserSchema = new Schema({
         default:0
     },
     messages:[{type: Schema.Types.ObjectId, ref: 'messages'}],
+    resetPasswordToken:String ,
+    passwordChangedAt:Date,
     permission:{
         type:String,
         
@@ -90,7 +93,21 @@ UserSchema.methods={
         delete user.password;
         return user;
     },
-    
+    generatePasswordResetToken: function(){
+    this.resetPasswordToken= uuidv4();
+    return this.resetPasswordToken
+},
+    resetPassword: function(password){
+        this.password= password;
+        this.resetPasswordToken= null;
+        this.passwordChangedAt= Date.now();
+        return this.save();
+    },
+    toJson: function(){
+        const user= this.toObject();
+        delete user.password;
+        return user;
+    }
 }
 
 module.exports= mongoose.model('User',UserSchema)

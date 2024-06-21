@@ -1,4 +1,5 @@
 const User = require('./model');
+const sendEmail= require('../../services/email');
 
 exports.getUserById = async (req, res) => {
     try{
@@ -124,3 +125,39 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ status: 'fail', message: 'error:0' + e });
     }
 }
+
+exports.forgotPassword = async (req, res) => {
+    const email = req.body.email;
+    const user = await User.findOne({ email: email });
+    if (!user) {
+        return res.status(404).json({ status: 'fail', message: 'User not found' });
+    }
+    const token =user.generatePasswordResetToken();
+    user.save();
+
+    await sendEmail({
+        email: user.email,
+        subject: 'Password Reset Request',
+        message: 'You are receiving this email because you (or someone else) have requested the reset of the password for your account.\n\n' +
+            'Please click on the following link, or paste this into your browser to complete the process:\n\n' +
+            'http://' + req.headers.host + '/api/users/resetpassword/' + token + '\n\n' +
+            'If you did not request this, please ignore this email and your password will remain unchanged.\n'
+    })
+
+    res.status(200).json({ status: 'success', message: 'Password reset email sent' });
+}
+
+exports.resetPassword = async (req, res) => {
+    const { token, password } = req.body;
+    const user = await User.findOne({ passwordResetToken: token, passwordResetExpires: { $gt: Date.now() } });
+
+    if (!user) {
+        return res.status(400).json({ status: 'fail', message: 'Invalid or expired token' });
+    }
+    user.resetpassword(password);
+    user.save();
+
+    res.status(200).json({ status: 'success', message: 'Password reset successful' });
+
+}
+
