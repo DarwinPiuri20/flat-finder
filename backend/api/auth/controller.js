@@ -56,30 +56,35 @@ const signToken = (user) => {
 
 exports.protect = async (req, res, next) => {
     let token = '';
-    if(!req.headers.authorization){
-        return res.status(401).json({status:'fail',message:'You are no logged in'});
+    if (!req.headers.authorization) {
+        return res.status(401).json({ status: 'fail', message: 'You are not logged in' });
     }
-    let arrAuth= req.headers.authorization.split(' ');
-    if(arrAuth[0] === 'Bearer' && arrAuth[1]){ 
-        token = arrAuth[1];}
-
-    if(!token){
-        return res.status(401).json({status:'fail',message:'You are no logged in'});
-
+    let arrAuth = req.headers.authorization.split(' ');
+    if (arrAuth[0] === 'Bearer' && arrAuth[1]) {
+        token = arrAuth[1];
     }
+
+    if (!token) {
+        return res.status(401).json({ status: 'fail', message: 'You are not logged in' });
+    }
+
     try {
         const verify = promisify(jwt.verify);
         const decoded = await verify(token, config.secrets.jwt);
         const user = await User.findById(decoded.id);
+
         if (!user) {
             return res.status(401).json({ status: 'fail', message: 'User not found' });
         }
+
+        console.log('Authenticated user:', user); // Log para verificar el usuario autenticado
         req.user = user; // Establecer req.user con el usuario autenticado
         next();
     } catch (error) {
+        console.error('Error verifying token:', error);
         return res.status(401).json({ status: 'fail', message: 'Invalid token' });
     }
-}
+};
 
 
 exports.isOwner = async (req, res, next) => {
@@ -93,15 +98,13 @@ exports.isOwner = async (req, res, next) => {
 }
 
 exports.isAdmin = async (req, res, next) => {
+    console.log('Checking admin permissions for user:', req.user);  // Log para verificar permisos de administrador
     if (req.user && req.user.permission && req.user.permission === 'admin') {
-        next()
-        
+        next();
     } else {
-        res.status(401).json({status:'Fail',message:'You are not authorized to perform this action'})
-   
+        res.status(401).json({status:'Fail',message:'You are not authorized to perform this action'});
     }
-
-    }
+}
 ;
 exports.isOwnerOrAdmin = async (req, res, next) => {
     if (req.user && (req.user.permission === 'admin' || req.user.permission === 'owner')) {

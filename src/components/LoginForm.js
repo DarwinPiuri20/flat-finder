@@ -25,6 +25,7 @@ export default function LoginForm() {
             console.log(result)
             if (result.data.status === 'success') {
                 localStorage.setItem('user_logged', JSON.stringify(result.data.token));
+                localStorage.setItem('user', JSON.stringify(result.data.user));
                 navigate('/dashboard', { replace: true });
 
             }

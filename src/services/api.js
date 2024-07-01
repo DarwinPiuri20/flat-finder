@@ -10,6 +10,7 @@ export class Api {
         this.token = JSON.parse(localStorage.getItem('user_logged'));
         if (this.token){
             axios.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
+            
         }
 
 
@@ -24,5 +25,12 @@ export class Api {
         return axios.get(this.urlBase + url);
     }
 
+    patch = (url, data) => {
+        return axios.patch(this.urlBase + url, data);
+    }
+    getUserLogged = () => {
+
+        return axios.get(this.urlBase + 'user/profile');
+    } 
 
 }

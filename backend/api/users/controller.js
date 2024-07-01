@@ -2,38 +2,52 @@ const User = require('./model');
 const sendEmail= require('../../services/email');
 
 exports.getUserById = async (req, res) => {
-    try{
-        let id= req.params.id;
-        const user = await User.findById({_id:id});
-        res.status(200).json({status:'success',user:user});
-    }catch(e){
-        res.status(404).json({status:'fail',message:'error:0'+e});
+    try {
+        const userId = req.params.id;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ status: 'fail', message: 'User not found' });
+        }
+
+        // Verificar si el usuario autenticado tiene permiso para ver este usuario
+        if (user._id.toString() !== req.user._id.toString() && req.user.permission !== 'admin') {
+            return res.status(401).json({ status: 'fail', message: 'You are not authorized to view this user' });
+        }
+
+        res.status(200).json({ status: 'success', user: user });
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        res.status(500).json({ status: 'fail', message: 'Error fetching user' });
     }
-}
+};
+
 
 
 
 
 exports.getAllUsers = async (req, res) => {
     const filter = req.query.filter || {};
-
     const queryFilter = {};
 
+    if (filter.name) {
+        queryFilter.firstname = new RegExp(filter.name, 'i'); // Filtrado por nombre (insensible a mayúsculas)
+    }
+
     if (filter.role) {
-        queryFilter.permission = {
-            $eq: filter.role
-        };
+        queryFilter.role = filter.role; // Ajustado para filtrar por rol directamente
     }
 
     if (filter.flatCountMin) {
-        queryFilter.flatCount = {
-            ...queryFilter.flatCount,
+        queryFilter.flatsCount = {
+            ...queryFilter.flatsCount,
             $gte: parseInt(filter.flatCountMin)
         };
     }
+
     if (filter.flatCountMax) {
-        queryFilter.flatCount = {
-            ...queryFilter.flatCount,
+        queryFilter.flatsCount = {
+            ...queryFilter.flatsCount,
             $lte: parseInt(filter.flatCountMax)
         };
     }
@@ -58,7 +72,7 @@ exports.getAllUsers = async (req, res) => {
             },
             {
                 $addFields: {
-                    flatCount: { $size: '$flats' },
+                    flatsCount: { $size: '$flats' }, // Renombrado a flatsCount para reflejar el campo calculado
                 }
             },
             {
@@ -77,10 +91,10 @@ exports.getAllUsers = async (req, res) => {
 
         res.status(200).json({ message: 'Users', data: users });
     } catch (error) {
+        console.error('Error retrieving users:', error);
         res.status(500).json({ message: 'Error retrieving users', error });
     }
 };
-
 exports.updateUser = async (req, res) => {
     try {
         const userId = req.params.id;
@@ -103,11 +117,11 @@ exports.updateUser = async (req, res) => {
         });
 
         res.status(200).json({ status: 'success', user: updatedUser });
-    } catch (e) {
-        res.status(500).json({ status: 'fail', message: 'error:0' + e });
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ status: 'fail', message: 'Error updating user' });
     }
 };
-
 
 exports.deleteUser = async (req, res) => {
     try {
