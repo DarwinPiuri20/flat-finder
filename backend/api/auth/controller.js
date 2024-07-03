@@ -14,8 +14,8 @@ exports.register = async (req, res)=> {
         
         const token = signToken(user);
         const returnNewUser ={
-            firstName:user.firstName,
-            lastName:user.lastName,
+            firstName:user.firstname,
+            lastName:user.lastname,
             email:user.email,
             role:user.role,
         }

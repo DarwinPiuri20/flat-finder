@@ -70,9 +70,9 @@ export default function RegisterForm({ mode = 'create' }) {
                 result = await api.patch(`user/${userData._id}`, {
                     email: emailValue,
                     password: passwordValue,
-                    firstName: firstNameValue,
-                    lastName: lastNameValue,
-                    birthDate: birthDateValue,
+                    firstname: firstNameValue,
+                    lastname: lastNameValue,
+                    birthdate: birthDateValue,
                     role: roleValue,
                 });
             }
