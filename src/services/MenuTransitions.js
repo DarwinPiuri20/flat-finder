@@ -19,7 +19,8 @@ export default function MenuTransitions() {
   const createHandleMenuClick = (menuItem) => {
     return () => {
       if (menuItem === "Log out") {
-        // Aquí puedes agregar la lógica de cierre de sesión
+        navigate("/");
+        localStorage.clear();
       }
 
       if (menuItem === "Profile") {
