@@ -6,7 +6,7 @@ export default function Register() {
 
     return (
         <div className=' bg-white  items-center justify-center '>
-            <UserForm/>
+            <UserForm type={'create'} id={null}/>
         </div>
     )
 }

@@ -39,6 +39,7 @@ exports.login = async (req, res) => {
         
         const token = signToken(userExists); 
         const returnUser = {
+            id:userExists.id,
             firstName:userExists.firstName,
             lastName:userExists.lastName,
             email:userExists.email,

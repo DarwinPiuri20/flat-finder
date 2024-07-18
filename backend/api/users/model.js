@@ -37,14 +37,6 @@ const UserSchema = new Schema({
     }],
     created:Date,
     modified:Date,
-    flats:{
-        type:[Schema.Types.ObjectId],
-        ref:'flats'
-    },
-    flatsCount:{
-        type:Number,
-        default:0
-    },
     messages:[{type: Schema.Types.ObjectId, ref: 'messages'}],
     resetPasswordToken:String ,
     passwordChangedAt:Date,
@@ -53,6 +45,7 @@ const UserSchema = new Schema({
         
     }
 })
+/// revisar como mandar el flat como objeto con toda la información
 // Middleware para asignar automáticamente el valor de 'permission' basado en 'role'
 UserSchema.pre('save', function(next) {
     if (!this.isModified('role')) return next();

@@ -29,7 +29,7 @@ export default function Header() {
           <Link to="/my-flats">
             <Button sx={{ color: "#FFFFFF", margin: "16px" }}>My Flats</Button>
           </Link>
-          <Link to="/my-favorites-flats">
+          <Link to="/favorites">
             <Button sx={{ color: "#FFFFFF", margin: "16px" }}>Favorites</Button>
           </Link>
           <Link to="/all-users">
