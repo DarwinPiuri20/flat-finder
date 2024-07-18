@@ -10,7 +10,7 @@ export default function ForgotPassword()  {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await Api.post('api/users/forgot-password', { email });
+            const response = await Api.post('/users/forgot-password', { email });
 
             const result = response.data;
             if (result.status === 'success') {

@@ -22,6 +22,7 @@ const FlatSchema= new Schema({
     hasAc:{
         type:Boolean,
         default:false
+        
     },
     yearBuilt:{
         type:Number,

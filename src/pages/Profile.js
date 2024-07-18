@@ -6,7 +6,7 @@ export default function Profile() {
     return (
         <div>
             <Header/>
-            <UserForm mode={"viewprofile"}/>
+            <UserForm type={'view'}/>
         </div>
     );
 }

@@ -1,11 +1,11 @@
 import React from 'react'
 import RegisterForm from '../components/UserForm'
 import Header from '../components/Header'
-export default function EditProfile() {
+export default function ViewProfile() {
     return (
         <div>    
             <Header/>
- <RegisterForm type={'update'} />
+ <RegisterForm type={'view-profile'} />
         </div>
     )
 }

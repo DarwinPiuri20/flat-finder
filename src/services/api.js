@@ -32,5 +32,7 @@ export class Api {
 
         return axios.get(this.urlBase + 'user/profile');
     } 
-
+    delete=(url,data)=>{
+        return axios.delete(this.urlBase + url);
+    }
 }
