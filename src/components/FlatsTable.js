@@ -13,41 +13,78 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    IconButton
+    IconButton,
+    Grid
 } from "@mui/material";
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { Api } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+
+const styles = {
+    root: {
+        display: 'flex',
+        justifyContent: 'center',
+        flexWrap: 'wrap',
+    },
+    card: {
+        width: '300px',
+        margin: '16px',
+    },
+    button: {
+        backgroundColor: '#1ABC9C',
+        color: 'white',
+        '&:hover': {
+            backgroundColor: '#16A085',
+        },
+    },
+    deleteButton: {
+        color: '#E74C3C',
+        '&:hover': {
+            color: '#C0392B',
+        },
+    },
+    favoriteButton: {
+        color: '#E74C3C',
+    },
+    title: {
+        color: '#2C3E50',
+    },
+};
 
 export default function FlatsTable({ type }) {
     const [flats, setFlats] = useState([]);
     const [city, setCity] = useState('');
-    const [price, setPrice] = useState('');
+    const [rentPrice, setRentPrice] = useState('');
     const [hasAc, setHasAc] = useState('');
-    const [streetName, setStreetName] = useState('');
+    const [order, setOrder] = useState('asc');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [favoriteFlats, setFavoriteFlats] = useState([]);
+    const [selectedFlat, setSelectedFlat] = useState(null);
 
     const userLogeado = JSON.parse(localStorage.getItem("user"));
     const ownerId = userLogeado?.id;
     const userId = userLogeado?.userId;
+    const token = localStorage.getItem("token");
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchFlats();
         fetchFavorites();
-    }, [type, city, price, hasAc, streetName]);
+    }, [type, city, rentPrice, hasAc, order]);
 
     const fetchFlats = async () => {
         setLoading(true);
         setError('');
         let filter = '';
         if (city) filter += `filter[city]=${city}`;
-        if (price) filter += `&filter[price]=${price}`;
+        if (rentPrice) filter += `&filter[rentPrice]=${rentPrice}`;
         if (hasAc) filter += `&filter[hasAc]=${hasAc === 'yes'}`;
-        if (streetName) filter += `&filter[streetName]=${streetName}`;
+        if (order) filter += `&order=${order}`;
 
         try {
             const api = new Api();
@@ -90,7 +127,7 @@ export default function FlatsTable({ type }) {
             const response = await api.post(`flats/add-favorite/${id}`);
             setFavoriteFlats([...favoriteFlats, id]);
             if (type === 'favorites') {
-                fetchFlats(); // Refresca la tabla de favoritos
+                fetchFlats();
             }
             console.log(response);
         } catch (error) {
@@ -104,7 +141,7 @@ export default function FlatsTable({ type }) {
             const response = await api.post(`flats/remove-favorite/${id}`);
             setFavoriteFlats(favoriteFlats.filter(flatId => flatId !== id));
             if (type === 'favorites') {
-                setFlats(flats.filter(flat => flat._id !== id)); // Actualiza la tabla de favoritos
+                setFlats(flats.filter(flat => flat._id !== id));
             }
             console.log(response);
         } catch (error) {
@@ -123,27 +160,37 @@ export default function FlatsTable({ type }) {
         }
     };
 
+    const viewFlat = (id) => {
+        navigate(`/view-flat/${id}`);
+    };
+
+    const editFlat = (id) => {
+        navigate(`/edit-flat/${id}`);
+    };
+
     return (
         <Box p={4}>
-            <Box mb={4} display="flex" justifyContent="center">
-                <Box width="100%" maxWidth="800px">
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h5" gutterBottom>Filtros</Typography>
-                            <Box display="flex" flexDirection="row" flexWrap="wrap" justifyContent="space-between">
+            <Box mb={4}>
+                <Card>
+                    <CardContent>
+                        <Typography variant="h5" gutterBottom style={styles.title}>Filtros</Typography>
+                        <Grid container spacing={1}>
+                            <Grid item xs={12} sm={6} md={3}>
                                 <TextField
                                     label="City"
                                     variant="outlined"
                                     fullWidth
-                                    margin="normal"
                                     value={city}
                                     onChange={(e) => setCity(e.target.value)}
+                                    size="small"
                                 />
-                                <FormControl variant="outlined" fullWidth margin="normal">
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <FormControl variant="outlined" fullWidth size="small">
                                     <InputLabel>Price</InputLabel>
                                     <Select
-                                        value={price}
-                                        onChange={(e) => setPrice(e.target.value)}
+                                        value={rentPrice}
+                                        onChange={(e) => setRentPrice(e.target.value)}
                                         label="Price"
                                     >
                                         <MenuItem value=""><em>None</em></MenuItem>
@@ -154,7 +201,9 @@ export default function FlatsTable({ type }) {
                                         <MenuItem value="2000+">$2000+</MenuItem>
                                     </Select>
                                 </FormControl>
-                                <FormControl variant="outlined" fullWidth margin="normal">
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <FormControl variant="outlined" fullWidth size="small">
                                     <InputLabel>Has AC</InputLabel>
                                     <Select
                                         value={hasAc}
@@ -166,30 +215,36 @@ export default function FlatsTable({ type }) {
                                         <MenuItem value="no">No</MenuItem>
                                     </Select>
                                 </FormControl>
-                                <TextField
-                                    label="Street Name"
-                                    variant="outlined"
-                                    fullWidth
-                                    margin="normal"
-                                    value={streetName}
-                                    onChange={(e) => setStreetName(e.target.value)}
-                                />
-                            </Box>
-                            <Box mt={2}>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <FormControl variant="outlined" fullWidth size="small">
+                                    <InputLabel>Order</InputLabel>
+                                    <Select
+                                        value={order}
+                                        onChange={(e) => setOrder(e.target.value)}
+                                        label="Order"
+                                    >
+                                        <MenuItem value="asc">A-Z</MenuItem>
+                                        <MenuItem value="desc">Z-A</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
                                 <Button
                                     variant="contained"
-                                    color="primary"
+                                    style={styles.button}
                                     startIcon={<SearchIcon />}
                                     onClick={fetchFlats}
+                                    fullWidth
                                 >
                                     Buscar
                                 </Button>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Box>
+                            </Grid>
+                        </Grid>
+                    </CardContent>
+                </Card>
             </Box>
-            <Box display="flex" justifyContent="center" flexWrap="wrap">
+            <Box style={styles.root}>
                 {loading ? (
                     Array.from({ length: 10 }).map((_, index) => (
                         <Box key={index} m={2} width="300px" maxWidth="100%">
@@ -211,43 +266,66 @@ export default function FlatsTable({ type }) {
                 ) : (
                     flats.map((row) => (
                         <Box key={row._id} m={2} width="300px" maxWidth="100%">
-                            <Card>
+                            <Card style={styles.card}>
                                 <CardMedia
                                     component="img"
                                     height="200"
-                                    image={row.imgFlat}
+                                    image={row.image ? `/uploads/${row.image}` : '/placeholder.png'}
                                     alt="flat"
                                 />
                                 <CardContent>
-                                    <Typography variant="h6" gutterBottom>{row.city}</Typography>
+                                    <Typography variant="h6" gutterBottom style={styles.title}>{row.city}</Typography>
+                                    <Typography variant="body1">Street Name: {row.streetName}</Typography>
                                     <Typography variant="body1">Precio: ${row.rentPrice}</Typography>
                                     <Typography variant="body2">Area Size: {row.areaSize}</Typography>
                                     <Typography variant="body2">Disponible: {row.dateAvailable}</Typography>
                                     <Typography variant="body2">AC: {row.hasAC ? 'Sí' : 'No'}</Typography>
                                 </CardContent>
                                 <CardActions>
-                                    {favoriteFlats.includes(row._id) ? (
-                                        <IconButton
-                                            color="secondary"
-                                            onClick={() => removeFavorite(row._id)}
-                                        >
-                                            <FavoriteIcon />
-                                        </IconButton>
-                                    ) : (
-                                        <IconButton
+                                    {(type === 'all-flats' || type === 'my-flats') && (
+                                        <Button
+                                            variant="outlined"
                                             color="primary"
-                                            onClick={() => addFavorite(row._id)}
+                                            startIcon={<VisibilityIcon />}
+                                            onClick={() => viewFlat(row._id)}
+                                            size="small"
                                         >
-                                            <FavoriteBorderIcon />
-                                        </IconButton>
+                                            View
+                                        </Button>
+                                    )}
+                                    {type !== 'my-flats' && (
+                                        favoriteFlats.includes(row._id) ? (
+                                            <IconButton
+                                                style={styles.favoriteButton}
+                                                onClick={() => removeFavorite(row._id)}
+                                            >
+                                                <FavoriteIcon />
+                                            </IconButton>
+                                        ) : (
+                                            <IconButton
+                                                color="primary"
+                                                onClick={() => addFavorite(row._id)}
+                                            >
+                                                <FavoriteBorderIcon />
+                                            </IconButton>
+                                        )
                                     )}
                                     {type === 'my-flats' && ownerId === row.ownerId && (
-                                        <IconButton
-                                            color="error"
-                                            onClick={() => deleteFlat(row._id)}
-                                        >
-                                            <DeleteIcon />
-                                        </IconButton>
+                                        <>
+                                            <Button
+                                                variant="outlined"
+                                                color="primary"
+                                                onClick={() => editFlat(row._id)}
+                                            >
+                                                Edit
+                                            </Button>
+                                            <IconButton
+                                                style={styles.deleteButton}
+                                                onClick={() => deleteFlat(row._id)}
+                                            >
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </>
                                     )}
                                 </CardActions>
                             </Card>

@@ -1,11 +1,12 @@
 import React from 'react'
-import RegisterForm from '../components/UserForm'
-import Header from '../components/Header'
+
+
+import User from '../components/User';
 export default function ViewProfile() {
     return (
         <div>    
-            <Header/>
- <RegisterForm type={'view-profile'} />
+         
+ <User  />
         </div>
     )
 }

@@ -2,6 +2,7 @@ let nodemailer=require('nodemailer');
 let config=require('../settings/config');
 const sendEmail = async (options) => {
     let transporter = nodemailer.createTransport({
+        
         host: config.EMAIL_HOST,
         port: config.EMAIL_PORT,
         secure: config.EMAIL_SECURE,

@@ -1,118 +1,112 @@
 const User = require('../users/model');
 const jwt = require('jsonwebtoken');
-const config= require('../../settings/config');
-const {promisify} = require('util');
+const config = require('../../settings/config');
+const { promisify } = require('util');
 
-//create and login users
-exports.register = async (req, res)=> {
-    try{
-        var newUser = new User(req.body)
-        newUser.created = new Date()
-        newUser.modified = new Date()
-        const user = await newUser.save();
+// Helper function to handle errors
+const handleError = (res, message, status = 500) => {
+    res.status(status).json({ status: 'fail', message });
+};
 
-        
-        const token = signToken(user);
-        const returnNewUser ={
-            firstName:user.firstname,
-            lastName:user.lastname,
-            email:user.email,
-            role:user.role,
-        }
-        res.status(201).json({status:'success', user:returnNewUser,token})
-        }catch(e){
-            res.status(404).json({status:'fail',message:'error:0'+e})
-        }
-}
-
-
-exports.login = async (req, res) => {
-    let { email, password } = req.body;
-    if (!email || !password) {
-        return res.status(404).json({ status: 'error', message: 'Please provide email and password' });
-    }
-    try {
-        const userExists = await User.findOne({ email: email });
-        if (!userExists || !userExists.authenticate(password)) {
-            return res.status(404).json({ status: 'error', message: 'Invalid email or password' });
-        }
-        
-        const token = signToken(userExists); 
-        const returnUser = {
-            id:userExists.id,
-            firstName:userExists.firstName,
-            lastName:userExists.lastName,
-            email:userExists.email,
-            role:userExists.role,
-        }
-        res.status(200).json({ status: 'success', user: returnUser, token }); 
-    } catch (error) {
-        res.status(500).json({ status: 'error', message: 'Internal server error' });
-    }
-
-}
+// Sign JWT Token
 const signToken = (user) => {
-    return jwt.sign({id: user.id,email: user.email},config.secrets.jwt,{expiresIn:config.expireTime});
-}
+    return jwt.sign({ id: user._id, email: user.email }, config.secrets.jwt, { expiresIn: config.expireTime });
+};
 
-exports.protect = async (req, res, next) => {
-    let token = '';
-    if (!req.headers.authorization) {
-        return res.status(401).json({ status: 'fail', message: 'You are not logged in' });
-    }
-    let arrAuth = req.headers.authorization.split(' ');
-    if (arrAuth[0] === 'Bearer' && arrAuth[1]) {
-        token = arrAuth[1];
-    }
-
-    if (!token) {
-        return res.status(401).json({ status: 'fail', message: 'You are not logged in' });
-    }
-
+// Register new user
+exports.register = async (req, res) => {
     try {
-        const verify = promisify(jwt.verify);
-        const decoded = await verify(token, config.secrets.jwt);
-        const user = await User.findById(decoded.id);
-
-        if (!user) {
-            return res.status(401).json({ status: 'fail', message: 'User not found' });
-        }
-
-        console.log('Authenticated user:', user); // Log para verificar el usuario autenticado
-        req.user = user; // Establecer req.user con el usuario autenticado
-        next();
+        const newUser = new User({
+            ...req.body,
+            created: new Date(),
+            modified: new Date()
+        });
+        const user = await newUser.save();
+        const token = signToken(user);
+        const returnNewUser = {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+        };
+        res.status(201).json({ status: 'success', user: returnNewUser, token });
     } catch (error) {
-        console.error('Error verifying token:', error);
-        return res.status(401).json({ status: 'fail', message: 'Invalid token' });
+        handleError(res, `Error registering user: ${error.message}`, 400);
     }
 };
 
-
-exports.isOwner = async (req, res, next) => {
-    if (req.user && req.user.permission && req.user.permission === 'owner') {
-        next()
-        
-    } else {
-        res.status(401).json({status:'Fail',message:'You are not authorized to perform this action'})
-   
+// Login user
+exports.login = async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return handleError(res, 'Please provide email and password', 400);
     }
-}
 
-exports.isAdmin = async (req, res, next) => {
-    console.log('Checking admin permissions for user:', req.user);  // Log para verificar permisos de administrador
-    if (req.user && req.user.permission && req.user.permission === 'admin') {
+    try {
+        const user = await User.findOne({ email });
+        if (!user || !user.authenticate(password)) {
+            return handleError(res, 'Invalid email or password', 401);
+        }
+        
+        const token = signToken(user);
+        const returnUser = {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+        };
+        res.status(200).json({ status: 'success', user: returnUser, token });
+    } catch (error) {
+        handleError(res, 'Internal server error', 500);
+    }
+};
+
+// Protect routes
+exports.protect = async (req, res, next) => {
+    let token = '';
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+        return handleError(res, 'You are not logged in', 401);
+    }
+
+    try {
+        const decoded = await promisify(jwt.verify)(token, config.secrets.jwt);
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            return handleError(res, 'User not found', 401);
+        }
+
+        req.user = user;
         next();
-    } else {
-        res.status(401).json({status:'Fail',message:'You are not authorized to perform this action'});
+    } catch (error) {
+        handleError(res, 'Invalid token', 401);
     }
-}
-;
-exports.isOwnerOrAdmin = async (req, res, next) => {
+};
+
+// Check if user is owner
+exports.isOwner = (req, res, next) => {
+    if (req.user && req.user.permission === 'owner') {
+        return next();
+    }
+    handleError(res, 'You are not authorized to perform this action', 403);
+};
+
+// Check if user is admin
+exports.isAdmin = (req, res, next) => {
+    if (req.user && req.user.permission === 'admin') {
+        return next();
+    }
+    handleError(res, 'You are not authorized to perform this action', 403);
+};
+
+// Check if user is owner or admin
+exports.isOwnerOrAdmin = (req, res, next) => {
     if (req.user && (req.user.permission === 'admin' || req.user.permission === 'owner')) {
-        next()
-        
-    } else {
-        res.status(401).json({status:'Fail',message:'You are not authorized to perform this action'})
-   
+        return next();
     }
-}
+    handleError(res, 'You are not authorized to perform this action', 403);
+};
