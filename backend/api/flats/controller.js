@@ -1,269 +1,252 @@
+const upload = require('../../services/multer');
 const Flat = require('./model');
 const User = require('../users/model');
 const Message = require('../messages/model');
-const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
 
 
-    exports.addFlat = async (req, res) => {
-    try{
-    // Crear un nuevo flat
-    const flat = new Flat(req.body);
-    flat.created = new Date();
-    flat.modified = new Date();
-    flat.ownerId = req.user._id; 
 
-    // Guardar el flat
-    await flat.save();
+const handleError = (res, error, status = 500) => {
+    console.error(error);
+    res.status(status).json({ status: 'error', message: error.message });
+};
 
-    // Actualizar el usuario
-    const user = await User.findById(req.user._id);
-    if (!user) {
-        return res.status(404).json({ status: 'fail', message: 'User not found' });
-    }
+exports.addFlat = async (req, res) => {
+    upload.single('image')(req, res, async (err) => {
+        if (err) return handleError(res, err);
 
-    // Verificar que el array flats existe en el usuario antes de agregar el nuevo flat
-    if (!user.flats) {
-        user.flats = [];
-    }
+        try {
+            const flat = new Flat({
+                ...req.body,
+                images: req.file ? [req.file.filename] : [],
+                created: new Date(),
+                modified: new Date(),
+                ownerId: req.user._id
+            });
 
-    user.flats.push(flat._id); // Agregar el ID del nuevo flat al array flats
-    user.flatsCount++; // Incrementar el contador de flats
-    await user.save();
+            await flat.save();
 
-    res.status(201).json({ status: 'success', flat: flat });
+            const user = await User.findById(req.user._id);
+            if (!user) return res.status(404).json({ status: 'fail', message: 'User not found' });
+
+            user.flats = user.flats || [];
+            user.flats.push(flat._id);
+            user.flatsCount = (user.flatsCount || 0) + 1;
+            await user.save();
+
+            res.status(201).json({ status: 'success', flat });
+        } catch (error) {
+            handleError(res, error);
+        }
+    });
+};
+// Other controller functions...
+
+exports.uploadImage = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ status: 'fail', message: 'No file uploaded' });
+        }
+        res.status(200).json({ status: 'success', message: 'File uploaded successfully', file: req.file });
     } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
+        handleError(res, error);
     }
-        }
-
+};
 exports.getAllFlats = async (req, res) => {
-    const filter =req.query.filter || {};
-    const queryFilter = {}
+    try {
+        const { filter = {}, orderBy = 'city', order = 'asc' } = req.query;
+        const queryFilter = {};
 
-    if(filter.city){
-        queryFilter.city = {
-            $regex: filter.city,
-            $options: 'i'
+        if (filter.city) {
+            queryFilter.city = { $regex: filter.city, $options: 'i' };
         }
-    }
-    
-    if(filter.hasAc){
-        queryFilter.hasAc = {
-            $eq: filter.hasAc
+        if (filter.hasAc) {
+            queryFilter.hasAc = filter.hasAc === 'true';
         }
-    }
-    if(filter.price){
-        const arrayCounter = filter.price.split('-');
-        filter.priceMin = arrayCounter[0];
-        filter.priceMax = arrayCounter[1];
-    }
-
-    if(filter.priceMin){
-        queryFilter.price = {
-            $gte: parseInt(filter.priceMin)
+        if (filter.rentPrice) {
+            const [rentPriceMin, rentPriceMax] = filter.rentPrice.split('-').map(Number);
+            queryFilter.rentPrice = {};
+            if (rentPriceMin) queryFilter.rentPrice.$gte = rentPriceMin;
+            if (rentPriceMax) queryFilter.rentPrice.$lte = rentPriceMax;
         }
+
+        const flats = await Flat.find(queryFilter).sort({ [orderBy]: order });
+        res.status(200).json({ status: 'success', flats });
+    } catch (error) {
+        handleError(res, error);
     }
-
-    if(filter.priceMax){
-        queryFilter.price = {
-            $lte: parseInt(filter.priceMax)
-        }
-    }
-
-    if(filter.priceMin && filter.priceMax){
-        queryFilter.price = {
-            $gte: parseInt(filter.priceMin),
-            $lte: parseInt(filter.priceMax)
-        }
-    }
-
-const orderBy= req.query.orderBy || 'city';
-const order = req.query.order || 'asc';
-
-
-    const flats = await Flat.find(queryFilter).sort({[orderBy]: order});
-    res.status(200).json({ status: 'success', flats: flats });
-    }  
-
-
-
+};
 
 exports.updateFlat = async (req, res) => {
     try {
-        const flatId = req.params.id;
-        const flat = await Flat.findById(flatId); 
-        if (!flat) {
-            return res.status(404).json({ status: 'fail', message: 'Flat not found' });
-        }
-        if (!flat.ownerId || !req.user._id) {
-            return res.status(400).json({ status: 'fail', message: 'Invalid data' });
-        }
+        const flat = await Flat.findById(req.params.id);
+        if (!flat) return res.status(404).json({ status: 'fail', message: 'Flat not found' });
         if (flat.ownerId.toString() !== req.user._id.toString()) {
-            return res.status(401).json({ status: 'fail', message: 'You are not authorized to perform this action' });
+            return res.status(401).json({ status: 'fail', message: 'Unauthorized' });
         }
-        await flat.updateOne(req.body);
-        res.status(200).json({ status: 'success', flat: flat });
-    } catch (e) {
-        res.status(404).json({ status: 'fail', message: 'error:0' + e });
+
+        Object.assign(flat, req.body, { modified: new Date() });
+        await flat.save();
+
+        res.status(200).json({ status: 'success', flat });
+    } catch (error) {
+        handleError(res, error);
     }
-}
+};
 
 exports.getMyFlats = async (req, res) => {
     try {
-       const flats = await Flat.find({ownerId: req.user._id})   // Obtener el ObjectId del usuario autenticado
-        return res.status(200).json({ status: 'success', flats: flats });
+        const flats = await Flat.find({ ownerId: req.user._id });
+        res.status(200).json({ status: 'success', flats });
     } catch (error) {
-        console.error('Error fetching user flats:', error);
-        res.status(500).json({ status: 'error', message: 'Internal server error' });
+        handleError(res, error);
     }
 };
+
 exports.getFlatById = async (req, res) => {
     try {
-        const flatId = req.params.id;
-        const flat = await Flat.findById({ _id: flatId });
-        if (!flat) {
-            return res.status(404).json({ status: 'fail', message: 'Flat not found' });
-        }
-
+        const flat = await Flat.findById(req.params.id).populate('ownerId');
+        if (!flat) return res.status(404).json({ status: 'fail', message: 'Flat not found' });
         res.status(200).json({ status: 'success', data: flat });
     } catch (error) {
-        res.status(500).json({ status: 'error', message: error.message });
+        handleError(res, error);
     }
 };
-
-
 exports.deleteFlat = async (req, res) => {
     try {
-        const flatId = req.params.id;
-        const flat = await Flat.findById(flatId);
-        if (!flat) {
-            return res.status(404).json({ status: 'fail', message: 'Flat not found' });
-        }
-        if (!flat.ownerId || !req.user._id) {
-            return res.status(400).json({ status: 'fail', message: 'Invalid data' });
-        }
+        const flat = await Flat.findById(req.params.id);
+        if (!flat) return res.status(404).json({ status: 'fail', message: 'Flat not found' });
         if (flat.ownerId.toString() !== req.user._id.toString()) {
-            return res.status(401).json({ status: 'fail', message: 'You are not authorized to perform this action' });
+            return res.status(401).json({ status: 'fail', message: 'Unauthorized' });
         }
+
+        // Remove images associated with the flat
+        if (flat.images && flat.images.length > 0) {
+            flat.images.forEach(image => {
+                const imagePath = path.join(__dirname, '../../uploads/', image);
+                if (fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
+                }
+            });
+        }
+
         await flat.deleteOne();
-        res.status(200).json({ status: 'success', message: 'Flat deleted successfully' });
-    } catch (e) {
-        res.status(404).json({ status: 'fail', message: 'error:0' + e });
-    }
-};
 
-
-
-
-////////messages
-exports.getMessages = async (req, res) => {
-   
-        try{
-        const messages = await Message.find().populate('FlatId');
-        const ownerMessages = messages.filter(message => {
-           
-            return message.FlatId.ownerId.toString() === req.user._id.toString();
-        });
-        res.status(200).json({ status: 'success', messages: ownerMessages });
-        } catch (e) {
-            
+        // Remove flat from user's flats
+        const user = await User.findById(req.user._id);
+        if (user) {
+            user.flats = user.flats.filter(id => id.toString() !== flat._id.toString());
+            user.flatsCount = Math.max(user.flatsCount - 1, 0);
+            await user.save();
         }
-}
 
-exports.getUserMessages = async (req, res) => {
-    try {
-       
-        const userId = req.user._id;
-         
-        const userMessages = await Message.find({ userId: userId }).populate('senderId');
-        console.log(userId)
-        console.log(userMessages)
-        res.status(200).json({ status: 'success', messages: userMessages });
-    } catch (e) {
-        res.status(500).json({ status: 'fail', message: 'error:0' + e });
+        res.status(200).json({ status: 'success', message: 'Flat deleted successfully' });
+    } catch (error) {
+        handleError(res, error);
     }
 };
 
+// Messages
+exports.getMessages = async (req, res) => {
+    try {
+        const { flatId, otherUserId } = req.params;
+        const userId = req.user._id;
+
+        if (!flatId || !otherUserId || !userId) {
+            return res.status(400).json({ status: 'fail', message: 'Missing required parameters' });
+        }
+
+        const messages = await Message.find({
+            flatId,
+            $or: [
+                { senderId: userId, receiverId: otherUserId },
+                { senderId: otherUserId, receiverId: userId }
+            ]
+        }).populate('senderId', 'firstName').populate('receiverId', 'firstName');
+
+        res.status(200).json({ status: 'success', messages });
+    } catch (error) {
+        handleError(res, error);
+    }
+};
+
+
+// Crear un nuevo mensaje
 exports.createMessage = async (req, res) => {
     try {
         const { content } = req.body;
         const { flatId } = req.params;
         const senderId = req.user._id;
 
-        if (!flatId) {
-            return res.status(400).json({ status: 'fail', message: 'FlatId is required' });
-        }
-        //verificar si el usuario existe
-        const user = await User.findById(senderId);
-        if (!user) {
-            return res.status(404).json({ status: 'fail', message: 'User not found' });
-        }
+        const flat = await Flat.findById(flatId).populate('ownerId');
+        if (!flat) return res.status(404).json({ status: 'fail', message: 'Flat not found' });
 
-        const flat = await Flat.findById(flatId);
-        if (!flat) {
-            return res.status(404).json({ status: 'fail', message: 'Flat not found' });
+        const receiverId = flat.ownerId.id;
+
+        if (!flatId || !senderId || !receiverId) {
+            return res.status(400).json({ status: 'fail', message: 'Missing required parameters' });
         }
 
-        const newMessage = new Message({
-            content: content,
-            SenderId: senderId,
-            FlatId: flatId
-        });
-
+        const newMessage = new Message({ content, senderId, receiverId, flatId });
         await newMessage.save();
 
+        // Agregar el nuevo mensaje al arreglo de mensajes del flat
         flat.messages.push(newMessage._id);
         await flat.save();
-        // agregar el mesaje en el usuario
-        user.messages.push(newMessage._id);
-        await user.save();
         res.status(201).json({ status: 'success', message: newMessage });
-    } catch (e) {
-        res.status(500).json({ status: 'fail', message: 'Error: ' + e });
+    } catch (error) {
+        handleError(res, error);
     }
 };
 
 exports.addFavorite = async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
-        if (!user.favoriteFlats){
-            user.favoriteFlats = [];
-        } 
-        const flatId = req.params.id;
-        console.log('adios',flatId)
-        const flat = await Flat.find({ _id: flatId });
-        console.log('hola',flat)
-        if (!flat || flat.length === 0) {
-            return res.status(404).json({ status: 'fail', message: 'Flat not found' });
+        if (!user) return res.status(404).json({ status: 'fail', message: 'User not found' });
+
+        const flat = await Flat.findById(req.params.id);
+        if (!flat) return res.status(404).json({ status: 'fail', message: 'Flat not found' });
+
+        if (!user.favoriteFlats) user.favoriteFlats = [];
+        if (!user.favoriteFlats.includes(flat._id)) {
+            user.favoriteFlats.push(flat._id);
+            await user.save();
         }
 
-        user.favoriteFlats.push(flat[0]._id);
-        await user.save();
         res.status(200).json({ status: 'success', message: 'Favorite added successfully' });
-    } catch (e) {
-        res.status(500).json({ status: 'fail', message: 'Error: ' + e });
+    } catch (error) {
+        handleError(res, error);
     }
 };
 
 exports.getFavorites = async (req, res) => {
-    try{
-      const user = await User.findById(req.user._id);
-      const flats = await Flat.find({ _id: { $in: user.favoriteFlats } });
-      res.status(200).json({ status: 'success', flats: flats });  
-    }catch(e){
-        res.status(500).json({ status: 'fail', message: 'Error: ' + e });
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ status: 'fail', message: 'User not found' });
+
+        const flats = await Flat.find({ _id: { $in: user.favoriteFlats } });
+        res.status(200).json({ status: 'success', flats });
+    } catch (error) {
+        handleError(res, error);
     }
 };
 
 exports.removeFavorite = async (req, res) => {
-    const user = await User.findById(req.user._id);
-    const flatId = req.params.id;
-    const index = user.favoriteFlats.indexOf(flatId);
-    if (index > -1) {
-        user.favoriteFlats.splice(index, 1);
-        await user.save();
-        res.status(200).json({ status: 'success', message: 'Favorite removed successfully' });
-    } else {
-        res.status(404).json({ status: 'fail', message: 'Favorite not found' });
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ status: 'fail', message: 'User not found' });
+
+        const flatId = req.params.id;
+        const index = user.favoriteFlats.indexOf(flatId);
+        if (index > -1) {
+            user.favoriteFlats.splice(index, 1);
+            await user.save();
+            res.status(200).json({ status: 'success', message: 'Favorite removed successfully' });
+        } else {
+            res.status(404).json({ status: 'fail', message: 'Favorite not found' });
+        }
+    } catch (error) {
+        handleError(res, error);
     }
 };

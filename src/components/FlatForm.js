@@ -1,271 +1,256 @@
-import React, { useState, useRef } from "react";
-import { Box, Switch, Card, CardContent, CardMedia, Typography, Button, Grid, TextField } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, Button, TextField, Grid, CircularProgress, Typography, Switch } from "@mui/material";
 import { Api } from "../services/api";
 
 const styles = {
-  root: {
-    display: "flex",
-    maxWidth: 600,
-    margin: "auto",
-    marginTop: 16,
-  },
-  media: {
-    width: 200,
-    objectFit: "cover",
-  },
-  content: {
-    flex: "1 0 auto",
-  },
-  button: {
-    marginTop: 16,
-  },
+    root: {
+        display: "flex",
+        flexDirection: "column",
+        maxWidth: 600,
+        margin: "auto",
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 10,
+        boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)",
+        backgroundColor: "#F5F5F5",
+    },
+    button: {
+        backgroundColor: "#1ABC9C",
+        color: "white",
+        '&:hover': {
+            backgroundColor: "#16A085",
+        },
+        marginTop: 16,
+    },
 };
 
 export default function FlatForm({ type, id }) {
-  const [errorAlert, setErrorAlert] = useState("");
-  const currentDate = new Date().toJSON().slice(0, 10);
-  const [flatLoaded, setFlatLoaded] = useState(false);
-  const [isProgress, setIsProgress] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [flats, setFlats] = useState({
-    city: '',
-    streetName: '',
-    streetNumber: '',
-    areaSize: '',
-    hasAC: false,
-    yearBuilt: '',
-    rentPrice: '',
-    dateAvailable: currentDate
-  });
+    const [flat, setFlat] = useState({
+        city: "",
+        streetName: "",
+        streetNumber: "",
+        areaSize: "",
+        hasAc: false,
+        yearBuilt: "",
+        rentPrice: "",
+        dateAvailable: new Date().toISOString().split('T')[0], // Ajustado para manejar la fecha
+    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [file, setFile] = useState(null);
 
-  const cityRef = useRef();
-  const streetNameRef = useRef();
-  const streetNumberRef = useRef();
-  const areaSizeRef = useRef();
-  const hasACRef = useRef();
-  const yearBuiltRef = useRef();
-  const rentPriceRef = useRef();
-  const dateAvailableRef = useRef();
-  const fileRef = useRef();
+    useEffect(() => {
+        if (type !== "create") {
+            const fetchFlatData = async () => {
+                try {
+                    const api = new Api();
+                    const response = await api.get(`flats/${id}`);
+                    if (response.data.flat) {
+                        setFlat({
+                            ...response.data.flat,
+                            dateAvailable: response.data.flat.dateAvailable.split('T')[0]
+                        });
+                    }
+                } catch (error) {
+                    setError(error.response?.data?.message || "An error occurred");
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchFlatData();
+        } else {
+            setLoading(false);
+        }
+    }, [id, type]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevenir el comportamiento por defecto del formulario
+    const handleFileChange = (event) => {
+        setFile(event.target.files[0]);
+    };
 
-    setIsProgress(true);
+    const handleSwitchChange = (event) => {
+        setFlat({ ...flat, hasAc: event.target.checked });
+    };
 
-    // Verifica que el ref hasACRef esté definido antes de acceder a sus propiedades
-    const hasAC = hasACRef.current ? hasACRef.current.checked : false;
+    const handleInputChange = (event) => {
+        const { name, value } = event.target;
+        setFlat({ ...flat, [name]: value });
+    };
 
-    const areaSizeValue = areaSizeRef.current.value;
-    const cityValue = cityRef.current.value;
-    const dateAvailableValue = dateAvailableRef.current.value;
-    const rentPriceValue = rentPriceRef.current.value;
-    const streetNameValue = streetNameRef.current.value;
-    const streetNumberValue = streetNumberRef.current.value;
-    const yearBuiltValue = yearBuiltRef.current.value;
-    const userValue = JSON.parse(localStorage.getItem('user_logged'));
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const updatedFlat = {
+            areaSize: flat.areaSize,
+            city: flat.city,
+            dateAvailable: flat.dateAvailable,
+            hasAc: flat.hasAc,
+            rentPrice: flat.rentPrice,
+            streetName: flat.streetName,
+            streetNumber: flat.streetNumber,
+            yearBuilt: flat.yearBuilt,
+        };
 
-    try {
-      const api = new Api();
-      const result = await api.post('flats/', {
-        areaSize: areaSizeValue,
-        city: cityValue,
-        dateAvailable: dateAvailableValue,
-        hasAC: hasAC, // Enviar directamente el valor obtenido
-        rentPrice: rentPriceValue,
-        streetName: streetNameValue,
-        streetNumber: streetNumberValue,
-        yearBuilt: yearBuiltValue,
-        user: userValue
-      });
-      console.log(result);
-      if (result.data) {
-        console.log(result.data.flats);
-        setFlats(result.data.flats);
-      } else {
-        setError('No se encontraron Flats');
-      }
-    } catch (error) {
-      setError(error.response?.data?.message || 'An error occurred');
-    } finally {
-      setLoading(false);
-      setIsProgress(false);
-    }
-  };
+        try {
+            const api = new Api();
+            let result;
+            if (type === "create" || type === "edit") {
+                result = await api.post("flats", updatedFlat);
+            } else {
+                result = await api.put(`flats/${id}`, updatedFlat);
+            }
 
-  return (
-    <Box maxWidth="700px" margin="auto" bgcolor="rgba(255, 255, 255, 0.5)" p={4} sx={{ borderRadius: 3 }}>
-      <form className="max-w-md mx-auto my-4" onSubmit={handleSubmit}>
-        <>
-          {type !== "create" && type !== "update" && (
-            <Card style={styles.root}>
-              <CardMedia
-                component="img"
-                style={styles.media}
-                image={"flat.imgFlat"}
-                title="Flat image"
-              />
-              <CardContent style={styles.content}>
-                <Typography variant="h5" component="h2" gutterBottom>
-                  Flat Details
-                </Typography>
-                {flats && (
-                  <>
-                    <Typography variant="body1" color="textSecondary">
-                      <strong>Price:</strong> ${flats.rentPrice}
+            if (file) {
+                const formData = new FormData();
+                formData.append("image", file);
+                await api.post(`flats/${result.data.flat._id}/upload-image`, formData, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                });
+            }
+
+            if (result.data) {
+                setFlat(result.data.flat);
+                alert(`${type === "create" ? "Flat created" : "Flat updated"} successfully`);
+            } else {
+                setError("No flat data found");
+            }
+        } catch (error) {
+            setError(error.response?.data?.message || "An error occurred");
+        }
+    };
+
+    return (
+        <Box style={styles.root}>
+            {loading ? (
+                <CircularProgress />
+            ) : (
+                <>
+                    <Typography variant="h6" style={styles.title}>
+                        {type === "create" ? "Create Flat" : "Edit Flat"}
                     </Typography>
-                    <Typography variant="body1" color="textSecondary" gutterBottom>
-                      <strong>Year Built:</strong> {flats.yearBuilt}
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary" gutterBottom>
-                      <strong>City:</strong> {flats.city}
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary" gutterBottom>
-                      <strong>Street:</strong> {flats.streetName}, No. {flats.streetNumber}
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary" gutterBottom>
-                      <strong>Area Size:</strong> {flats.areaSize} sqft
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary" gutterBottom>
-                      <strong>Date Available:</strong> {flats.dateAvailable}
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary" gutterBottom>
-                      <strong>AC:</strong> {flats.hasAC ? 'Yes' : 'No'}
-                    </Typography>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )}
-          {(type === 'create' || type === 'update') && (
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  disabled={type === 'view'}
-                  fullWidth
-                  id="city"
-                  label="City"
-                  variant="outlined"
-                  inputRef={cityRef}
-                  defaultValue={flats?.city || ''}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  disabled={type === 'view'}
-                  fullWidth
-                  id="streetName"
-                  label="Street Name"
-                  variant="outlined"
-                  inputRef={streetNameRef}
-                  defaultValue={flats?.streetName|| ''}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  disabled={type === 'view'}
-                  fullWidth
-                  id="streetNumber"
-                  label="Street Number"
-                  variant="outlined"
-                  type="number"
-                  inputRef={streetNumberRef}
-                  defaultValue={flats?.streetNumber|| ''}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  disabled={type === 'view'}
-                  fullWidth
-                  id="areaSize"
-                  label="Area Size"
-                  variant="outlined"
-                  type="number"
-                  inputRef={areaSizeRef}
-                  defaultValue={flats?.areaSize|| ''}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Box display="flex" alignItems="center" marginBottom="16px">
-                  <label htmlFor="hasAC" style={{ marginRight: "8px" }}>Has AC</label>
-                  <Switch 
-                    disabled={type === 'view'} 
-                    checked={flats?.hasAC || false} 
-                    id="hasAC" 
-                    inputRef={hasACRef} 
-                    color="primary" 
-                    onChange={() => {}} 
-                  />
-                </Box>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  disabled={type === 'view'}
-                  fullWidth
-                  id="yearBuilt"
-                  label="Year Built"
-                  variant="outlined"
-                  type="number"
-                  inputRef={yearBuiltRef}
-                  defaultValue={flats?.yearBuilt|| ''}
-                  inputProps={{ min: 1900, max: 2050 }}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  disabled={type === 'view'}
-                  fullWidth
-                  id="rentPrice"
-                  label="Rent Price"
-                  variant="outlined"
-                  type="number"
-                  inputRef={rentPriceRef}
-                  defaultValue={flats?.rentPrice|| ''}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  disabled={type === 'view'}
-                  fullWidth
-                  id="dateAvailable"
-                  label="Date Available"
-                  variant="outlined"
-                  type="date"
-                  inputRef={dateAvailableRef}
-                  defaultValue={flats?.dateAvailable|| ''}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <input 
-                  disabled={type === 'view'} 
-                  type="file" 
-                  id="file" 
-                  placeholder="Add photo" 
-                  className="form-control" 
-                  ref={fileRef} 
-                  onChange={() => {}} 
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <div className="justify-center flex">
-                  <Button type='submit' variant="contained" sx={{ backgroundColor: 'black' }}>{type === 'create' ? 'Create' : 'Update'}</Button>
-                  {type === 'update' && (
-                    <Button variant="contained" color="error" sx={{ marginLeft: '8px' }} onClick={""}>Delete</Button>
-                  )}
-                </div>
-              </Grid>
-            </Grid>
-          )}
-        </>
-      </form>
-    </Box>
-  );
+                    {error && <Typography color="error">{error}</Typography>}
+                    <form onSubmit={handleSubmit}>
+                        <Grid container spacing={1}>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    id="city"
+                                    name="city"
+                                    label="City"
+                                    variant="outlined"
+                                    value={flat.city}
+                                    onChange={handleInputChange}
+                                    required
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    id="streetName"
+                                    name="streetName"
+                                    label="Street Name"
+                                    variant="outlined"
+                                    value={flat.streetName}
+                                    onChange={handleInputChange}
+                                    required
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    id="streetNumber"
+                                    name="streetNumber"
+                                    label="Street Number"
+                                    variant="outlined"
+                                    type="number"
+                                    value={flat.streetNumber}
+                                    onChange={handleInputChange}
+                                    required
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    id="areaSize"
+                                    name="areaSize"
+                                    label="Area Size"
+                                    variant="outlined"
+                                    type="number"
+                                    value={flat.areaSize}
+                                    onChange={handleInputChange}
+                                    required
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Box display="flex" alignItems="center" marginBottom="4px">
+                                    <label htmlFor="hasAc" style={styles.switchLabel}>Has AC</label>
+                                    <Switch
+                                        checked={flat.hasAc}
+                                        id="hasAc"
+                                        onChange={handleSwitchChange}
+                                        color="primary"
+                                    />
+                                </Box>
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    id="yearBuilt"
+                                    name="yearBuilt"
+                                    label="Year Built"
+                                    variant="outlined"
+                                    type="number"
+                                    value={flat.yearBuilt}
+                                    onChange={handleInputChange}
+                                    inputProps={{ min: 1900, max: 2050 }}
+                                    required
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    id="rentPrice"
+                                    name="rentPrice"
+                                    label="Rent Price"
+                                    variant="outlined"
+                                    type="number"
+                                    value={flat.rentPrice}
+                                    onChange={handleInputChange}
+                                    required
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    id="dateAvailable"
+                                    name="dateAvailable"
+                                    label="Date Available"
+                                    variant="outlined"
+                                    type="date"
+                                    value={flat.dateAvailable}
+                                    onChange={handleInputChange}
+                                    required
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <input
+                                    type="file"
+                                    id="file"
+                                    className="form-control"
+                                    onChange={handleFileChange}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <div className="justify-center flex">
+                                    <Button type="submit" variant="contained" style={styles.button}>
+                                        {type === "create" ? "Create Flat" : "Update Flat"}
+                                    </Button>
+                                </div>
+                            </Grid>
+                        </Grid>
+                    </form>
+                </>
+            )}
+        </Box>
+    );
 }

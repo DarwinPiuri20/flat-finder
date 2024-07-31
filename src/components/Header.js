@@ -8,8 +8,12 @@ import { Link } from "react-router-dom";
 import MenuTransitions from "../services/MenuTransitions";
 
 export default function Header() {
+  const userLogeado = JSON.parse(localStorage.getItem("user"));
+  const isAdmin = userLogeado?.role === 'admin';
+  const isOwner = userLogeado?.role === 'owner';
+
   return (
-    <AppBar position="static" sx={{ backgroundColor: "#398bf7", height: 70 }}>
+    <AppBar position="static" sx={{ backgroundColor: "#2C3E50", height: 70 }}>
       <Toolbar>
         <Link to="/dashboard">
           <img
@@ -26,18 +30,27 @@ export default function Header() {
         ></Typography>
 
         <div>
-          <Link to="/my-flats">
-            <Button sx={{ color: "#FFFFFF", margin: "16px" }}>My Flats</Button>
+          <Link to="/dashboard">
+            <Button sx={{ color: "#FFFFFF", margin: "16px", ':hover': { color: '#95A5A6' } }}>Home</Button>
           </Link>
+          {isOwner && (
+            <Link to="/my-flats">
+              <Button sx={{ color: "#FFFFFF", margin: "16px", ':hover': { color: '#95A5A6' } }}>My Flats</Button>
+            </Link>
+          )}
           <Link to="/favorites">
-            <Button sx={{ color: "#FFFFFF", margin: "16px" }}>Favorites</Button>
+            <Button sx={{ color: "#FFFFFF", margin: "16px", ':hover': { color: '#95A5A6' } }}>Favorites</Button>
           </Link>
-          <Link to="/all-users">
-            <Button sx={{ color: "#FFFFFF", margin: "16px" }}>Users</Button>
-          </Link>
-          <Link to="/report">
-            <Button sx={{ color: "#FFFFFF", margin: "16px" }}>Report</Button>
-          </Link>
+          {isAdmin && (
+            <>
+              <Link to="/all-users">
+                <Button sx={{ color: "#FFFFFF", margin: "16px", ':hover': { color: '#95A5A6' } }}>Users</Button>
+              </Link>
+              <Link to="/report">
+                <Button sx={{ color: "#FFFFFF", margin: "16px", ':hover': { color: '#95A5A6' } }}>Report</Button>
+              </Link>
+            </>
+          )}
         </div>
 
         <MenuTransitions />

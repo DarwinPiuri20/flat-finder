@@ -1,106 +1,99 @@
 const mongoose = require('mongoose');
-const bcrypt= require('bcryptjs');
-const{v4:uuidv4}= require('uuid');
-const Schema= mongoose.Schema;
+const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
+const Schema = mongoose.Schema;
+
 const UserSchema = new Schema({
-    email:{
-        type:String,
-        unique:true,
-        required:[true,'Please provide email'],
-        lowercase: true
+    email: {
+        type: String,
+        unique: true,
+        required: [true, 'Please provide email'],
+        lowercase: true,
+        match: [/.+@.+\..+/, 'Please provide a valid email address']
     },
-    password:{
-        type:String,
-        required:[true, 'Please provide password'],
-        minLength:6 
+    password: {
+        type: String,
+        required: [true, 'Please provide password'],
+        minlength: 6
     },
-    firstName:{
-        type:String,
-        required:[true, 'Please Provide Name']
+    firstName: {
+        type: String,
+        required: [true, 'Please provide first name']
     },
-    lastName:{
-        type:String,
-        required:[true, 'Please Provide Lastname']
+    lastName: {
+        type: String,
+        required: [true, 'Please provide last name']
     },
-    birthDate:{
-        type:Date,
-        required:[true, 'Please povide Birth Date']
+    birthDate: {
+        type: Date,
+        required: [true, 'Please provide birth date']
     },
-    role:{
-        type:String,
-        enum:['renter','owner','admin'],
-        default:'renter'
+    role: {
+        type: String,
+        enum: ['renter', 'owner', 'admin'],
+        default: 'renter'
     },
-    favoriteFlats:[{
+    favoriteFlats: [{
         type: Schema.Types.ObjectId,
-            ref: 'Flat'
+        ref: 'Flat'
     }],
-    created:Date,
-    modified:Date,
-    messages:[{type: Schema.Types.ObjectId, ref: 'messages'}],
-    resetPasswordToken:String ,
-    passwordChangedAt:Date,
-    permission:{
-        type:String,
-        
+    flatsCount: { type: Number, default: 0 },
+    flats: [{ type: Schema.Types.ObjectId, ref: 'Flat' }],
+    messages: [{ type: Schema.Types.ObjectId, ref: 'Message' }],
+    resetPasswordToken: String,
+    passwordChangedAt: Date,
+    passwordResetExpires: Date,
+    permission: {
+        type: String,
+        enum: ['admin', 'renter', 'owner'],
+        default: 'renter'
+    },
+    image: {
+        type: String // Store image URL
     }
-})
-/// revisar como mandar el flat como objeto con toda la información
-// Middleware para asignar automáticamente el valor de 'permission' basado en 'role'
-UserSchema.pre('save', function(next) {
-    if (!this.isModified('role')) return next();
-  
-    switch (this.role) {
-      case 'admin':
-        this.permission = 'admin';
-        break;
-      case 'renter':
-        this.permission = 'renter';
-        break;
-      case 'owner':
-        this.permission = 'owner';
-        break;
-      default:
-        this.permission = 'renter';
-    }
-  
-    next();
-  });
+}, { timestamps: true });
 
-UserSchema.pre('save',async function(next){
-    if(!this.isModified('password')) {next()} ;
+// Middleware to hash password before saving
+UserSchema.pre('save', async function(next) {
+    if (!this.isModified('password')) return next();
 
-    const salt= await bcrypt.genSalt(10);
-    const hash= await bcrypt.hash(this.password,salt);
-    this.password=hash;
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
     next();
 });
 
-UserSchema.methods={
-    authenticate: async function(password){
-        return await bcrypt.compare(password,this.password)
+// Middleware to set permissions based on role
+UserSchema.pre('save', function(next) {
+    if (!this.isModified('role')) return next();
+
+    this.permission = this.role; // Simplified assignment
+    next();
+});
+
+// Instance methods
+UserSchema.methods = {
+    authenticate: async function(password) {
+        return await bcrypt.compare(password, this.password);
     },
-    
-    tojson: function(){
-        const user= this.toObject();
-        delete user.password;
-        return user;
+
+    generatePasswordResetToken: function() {
+        this.resetPasswordToken = uuidv4();
+        return this.resetPasswordToken;
     },
-    generatePasswordResetToken: function(){
-    this.resetPasswordToken= uuidv4();
-    return this.resetPasswordToken
-},
-    resetPassword: function(password){
-        this.password= password;
-        this.resetPasswordToken= null;
-        this.passwordChangedAt= Date.now();
+
+    resetPassword: async function(newPassword) {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(newPassword, salt);
+        this.resetPasswordToken = null;
+        this.passwordChangedAt = Date.now();
         return this.save();
     },
-    toJson: function(){
-        const user= this.toObject();
+
+    toJson: function() {
+        const user = this.toObject();
         delete user.password;
         return user;
     }
-}
+};
 
-module.exports= mongoose.model('User',UserSchema)
+module.exports = mongoose.model('User', UserSchema);
