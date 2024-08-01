@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { TextField, Button, Box, Typography } from '@mui/material';
+import { TextField, Button, Box, Typography, Snackbar, Alert } from '@mui/material';
 import { Api } from '../services/api';
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -12,8 +13,10 @@ const ForgotPassword = () => {
         try {
             const result = await api.post('users/forgot-password', { email });
             setMessage(result.data.message);
+            setError('');
         } catch (error) {
-            setMessage('Error sending password reset email');
+            setError('Error sending password reset email');
+            setMessage('');
         }
     };
 
@@ -36,9 +39,18 @@ const ForgotPassword = () => {
                 </Button>
             </form>
             {message && (
-                <Typography variant="body1" align="center" color="secondary" sx={{ mt: 2 }}>
-                    {message}
-                </Typography>
+                <Snackbar open={true} autoHideDuration={6000} onClose={() => setMessage('')}>
+                    <Alert onClose={() => setMessage('')} severity="success" sx={{ width: '100%' }}>
+                        {message}
+                    </Alert>
+                </Snackbar>
+            )}
+            {error && (
+                <Snackbar open={true} autoHideDuration={6000} onClose={() => setError('')}>
+                    <Alert onClose={() => setError('')} severity="error" sx={{ width: '100%' }}>
+                        {error}
+                    </Alert>
+                </Snackbar>
             )}
         </Box>
     );

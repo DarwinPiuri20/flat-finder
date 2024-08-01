@@ -241,14 +241,7 @@ const EditFlat = () => {
                             required
                         />
                     </Grid>
-                    <Grid item xs={12}>
-                        <input
-                            type="file"
-                            id="file"
-                            className="form-control"
-                            onChange={handleFileChange}
-                        />
-                    </Grid>
+                    
                     <Grid item xs={12}>
                         <Button
                             type="submit"

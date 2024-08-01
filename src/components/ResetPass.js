@@ -1,21 +1,35 @@
-// src/components/ResetPass.js
 import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { TextField, Button, Typography, Box, Snackbar, Alert } from '@mui/material';
 import { Api } from '../services/api';
-import { TextField, Button, Typography, Box } from '@mui/material';
 
-const ResetPass = ({ token }) => {
+const ResetPass = () => {
+    const { token } = useParams(); // Get token from URL parameters
+    const navigate = useNavigate(); // Hook for redirection
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
     const handleResetPassword = async () => {
+        if (!token) {
+            setError('Invalid or missing token');
+            return;
+        }
+        if (!password) {
+            setError('Password is required');
+            return;
+        }
         try {
             const api = new Api();
             const response = await api.post(`users/reset-password/${token}`, { password });
             setSuccess(response.data.message);
             setError('');
+            setTimeout(() => {
+                navigate('/'); // Redirect to login after 3 seconds
+            }, 3000);
         } catch (err) {
-            setError('Error resetting password: ' + err.response.data.message);
+            console.error('Error resetting password:', err);
+            setError('Error resetting password: ' + (err.response && err.response.data ? err.response.data.message : err.message));
             setSuccess('');
         }
     };
@@ -73,14 +87,18 @@ const ResetPass = ({ token }) => {
                 Reset Password
             </Button>
             {error && (
-                <Typography sx={{ color: '#E74C3C', mt: 2 }}>
-                    {error}
-                </Typography>
+                <Snackbar open={true} autoHideDuration={6000} onClose={() => setError('')}>
+                    <Alert onClose={() => setError('')} severity="error" sx={{ width: '100%' }}>
+                        {error}
+                    </Alert>
+                </Snackbar>
             )}
             {success && (
-                <Typography sx={{ color: '#1ABC9C', mt: 2 }}>
-                    {success}
-                </Typography>
+                <Snackbar open={true} autoHideDuration={6000} onClose={() => setSuccess('')}>
+                    <Alert onClose={() => setSuccess('')} severity="success" sx={{ width: '100%' }}>
+                        {success}
+                    </Alert>
+                </Snackbar>
             )}
         </Box>
     );

@@ -3,17 +3,17 @@ const jwt = require('jsonwebtoken');
 const config = require('../../settings/config');
 const { promisify } = require('util');
 
-// Helper function to handle errors
+
 const handleError = (res, message, status = 500) => {
     res.status(status).json({ status: 'fail', message });
 };
 
-// Sign JWT Token
+
 const signToken = (user) => {
     return jwt.sign({ id: user._id, email: user.email }, config.secrets.jwt, { expiresIn: config.expireTime });
 };
 
-// Register new user
+
 exports.register = async (req, res) => {
     try {
         const newUser = new User({
@@ -35,7 +35,6 @@ exports.register = async (req, res) => {
     }
 };
 
-// Login user
 exports.login = async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -62,7 +61,6 @@ exports.login = async (req, res) => {
     }
 };
 
-// Protect routes
 exports.protect = async (req, res, next) => {
     let token = '';
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -87,7 +85,7 @@ exports.protect = async (req, res, next) => {
     }
 };
 
-// Check if user is owner
+
 exports.isOwner = (req, res, next) => {
     if (req.user && req.user.permission === 'owner') {
         return next();
@@ -95,7 +93,7 @@ exports.isOwner = (req, res, next) => {
     handleError(res, 'You are not authorized to perform this action', 403);
 };
 
-// Check if user is admin
+
 exports.isAdmin = (req, res, next) => {
     if (req.user && req.user.permission === 'admin') {
         return next();
@@ -103,7 +101,7 @@ exports.isAdmin = (req, res, next) => {
     handleError(res, 'You are not authorized to perform this action', 403);
 };
 
-// Check if user is owner or admin
+
 exports.isOwnerOrAdmin = (req, res, next) => {
     if (req.user && (req.user.permission === 'admin' || req.user.permission === 'owner')) {
         return next();

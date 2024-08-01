@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TextField, Button, Box, Typography } from '@mui/material';
 import { Api } from '../services/api';
@@ -10,7 +9,7 @@ export default function LoginForm() {
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const navigate = useNavigate();
-  
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsProgress(true);
@@ -26,11 +25,15 @@ export default function LoginForm() {
         localStorage.setItem('user_logged', JSON.stringify(result.data.token));
         localStorage.setItem('user', JSON.stringify(result.data.user));
         navigate('/dashboard', { replace: true });
+      } else {
+        setErrorAlert('Login failed');
       }
     } catch (error) {
-      setErrorAlert(error.response.data.message);
+      setErrorAlert(error.response && error.response.data ? error.response.data.message : 'Login failed');
+    } finally {
+      setIsProgress(false);
     }
-  }
+  };
 
   return (
     <Box

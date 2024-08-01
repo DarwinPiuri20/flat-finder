@@ -2,8 +2,10 @@ import React from 'react'
 import FlatsTable from '../components/FlatsTable'
 import Typography from '@mui/material/Typography'
 import Header from '../components/Header'
+import checkUserLogged from '../services/action'
 
 const Favorites = () => {
+checkUserLogged();
     return(
         <div className='container, bg-white, h-screen, flex, items-center, justify-center'>
         <Header/>

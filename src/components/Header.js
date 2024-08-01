@@ -46,9 +46,6 @@ export default function Header() {
               <Link to="/all-users">
                 <Button sx={{ color: "#FFFFFF", margin: "16px", ':hover': { color: '#95A5A6' } }}>Users</Button>
               </Link>
-              <Link to="/report">
-                <Button sx={{ color: "#FFFFFF", margin: "16px", ':hover': { color: '#95A5A6' } }}>Report</Button>
-              </Link>
             </>
           )}
         </div>

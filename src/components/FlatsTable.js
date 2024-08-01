@@ -64,12 +64,10 @@ export default function FlatsTable({ type }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [favoriteFlats, setFavoriteFlats] = useState([]);
-    const [selectedFlat, setSelectedFlat] = useState(null);
 
     const userLogeado = JSON.parse(localStorage.getItem("user"));
     const ownerId = userLogeado?.id;
     const userId = userLogeado?.userId;
-    const token = localStorage.getItem("token");
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -82,9 +80,9 @@ export default function FlatsTable({ type }) {
         setError('');
         let filter = '';
         if (city) filter += `filter[city]=${city}`;
-        if (rentPrice) filter += `&filter[rentPrice]=${rentPrice}`;
-        if (hasAc) filter += `&filter[hasAc]=${hasAc === 'yes'}`;
-        if (order) filter += `&order=${order}`;
+        if (rentPrice) filter += `${filter ? '&' : ''}filter[rentPrice]=${rentPrice}`;
+        if (hasAc) filter += `${filter ? '&' : ''}filter[hasAc]=${hasAc === 'yes'}`;
+        if (order) filter += `${filter ? '&' : ''}order=${order}`;
 
         try {
             const api = new Api();
@@ -167,83 +165,87 @@ export default function FlatsTable({ type }) {
     const editFlat = (id) => {
         navigate(`/edit-flat/${id}`);
     };
+    
 
     return (
         <Box p={4}>
-            <Box mb={4}>
-                <Card>
-                    <CardContent>
-                        <Typography variant="h5" gutterBottom style={styles.title}>Filtros</Typography>
-                        <Grid container spacing={1}>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <TextField
-                                    label="City"
-                                    variant="outlined"
-                                    fullWidth
-                                    value={city}
-                                    onChange={(e) => setCity(e.target.value)}
-                                    size="small"
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <FormControl variant="outlined" fullWidth size="small">
-                                    <InputLabel>Price</InputLabel>
-                                    <Select
-                                        value={rentPrice}
-                                        onChange={(e) => setRentPrice(e.target.value)}
-                                        label="Price"
+            {type !== 'my-flats' && type !== 'favorites' && (
+                <Box mb={4}>
+                    <Typography variant="h5" gutterBottom style={styles.title}>Flats</Typography>
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h5" gutterBottom style={styles.title}>Filtros</Typography>
+                            <Grid container spacing={1}>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <TextField
+                                        label="City"
+                                        variant="outlined"
+                                        fullWidth
+                                        value={city}
+                                        onChange={(e) => setCity(e.target.value)}
+                                        size="small"
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <FormControl variant="outlined" fullWidth size="small">
+                                        <InputLabel>Price</InputLabel>
+                                        <Select
+                                            value={rentPrice}
+                                            onChange={(e) => setRentPrice(e.target.value)}
+                                            label="Price"
+                                        >
+                                            <MenuItem value=""><em>None</em></MenuItem>
+                                            <MenuItem value="0-500">$0 - $500</MenuItem>
+                                            <MenuItem value="500-1000">$500 - $1000</MenuItem>
+                                            <MenuItem value="1000-1500">$1000 - $1500</MenuItem>
+                                            <MenuItem value="1500-2000">$1500 - $2000</MenuItem>
+                                            <MenuItem value="2000+">$2000+</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <FormControl variant="outlined" fullWidth size="small">
+                                        <InputLabel>Has AC</InputLabel>
+                                        <Select
+                                            value={hasAc}
+                                            onChange={(e) => setHasAc(e.target.value)}
+                                            label="Has AC"
+                                        >
+                                            <MenuItem value=""><em>None</em></MenuItem>
+                                            <MenuItem value="yes">Yes</MenuItem>
+                                            <MenuItem value="no">No</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <FormControl variant="outlined" fullWidth size="small">
+                                        <InputLabel>Order</InputLabel>
+                                        <Select
+                                            value={order}
+                                            onChange={(e) => setOrder(e.target.value)}
+                                            label="Order"
+                                        >
+                                            <MenuItem value="asc">A-Z</MenuItem>
+                                            <MenuItem value="desc">Z-A</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <Button
+                                        variant="contained"
+                                        style={styles.button}
+                                        startIcon={<SearchIcon />}
+                                        onClick={fetchFlats}
+                                        fullWidth
                                     >
-                                        <MenuItem value=""><em>None</em></MenuItem>
-                                        <MenuItem value="0-500">$0 - $500</MenuItem>
-                                        <MenuItem value="500-1000">$500 - $1000</MenuItem>
-                                        <MenuItem value="1000-1500">$1000 - $1500</MenuItem>
-                                        <MenuItem value="1500-2000">$1500 - $2000</MenuItem>
-                                        <MenuItem value="2000+">$2000+</MenuItem>
-                                    </Select>
-                                </FormControl>
+                                        Buscar
+                                    </Button>
+                                </Grid>
                             </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <FormControl variant="outlined" fullWidth size="small">
-                                    <InputLabel>Has AC</InputLabel>
-                                    <Select
-                                        value={hasAc}
-                                        onChange={(e) => setHasAc(e.target.value)}
-                                        label="Has AC"
-                                    >
-                                        <MenuItem value=""><em>None</em></MenuItem>
-                                        <MenuItem value="yes">Yes</MenuItem>
-                                        <MenuItem value="no">No</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <FormControl variant="outlined" fullWidth size="small">
-                                    <InputLabel>Order</InputLabel>
-                                    <Select
-                                        value={order}
-                                        onChange={(e) => setOrder(e.target.value)}
-                                        label="Order"
-                                    >
-                                        <MenuItem value="asc">A-Z</MenuItem>
-                                        <MenuItem value="desc">Z-A</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <Button
-                                    variant="contained"
-                                    style={styles.button}
-                                    startIcon={<SearchIcon />}
-                                    onClick={fetchFlats}
-                                    fullWidth
-                                >
-                                    Buscar
-                                </Button>
-                            </Grid>
-                        </Grid>
-                    </CardContent>
-                </Card>
-            </Box>
+                        </CardContent>
+                    </Card>
+                </Box>
+            )}
             <Box style={styles.root}>
                 {loading ? (
                     Array.from({ length: 10 }).map((_, index) => (
@@ -267,22 +269,17 @@ export default function FlatsTable({ type }) {
                     flats.map((row) => (
                         <Box key={row._id} m={2} width="300px" maxWidth="100%">
                             <Card style={styles.card}>
-                                <CardMedia
-                                    component="img"
-                                    height="200"
-                                    image={row.image ? `/uploads/${row.image}` : '/placeholder.png'}
-                                    alt="flat"
-                                />
+
                                 <CardContent>
                                     <Typography variant="h6" gutterBottom style={styles.title}>{row.city}</Typography>
                                     <Typography variant="body1">Street Name: {row.streetName}</Typography>
                                     <Typography variant="body1">Precio: ${row.rentPrice}</Typography>
                                     <Typography variant="body2">Area Size: {row.areaSize}</Typography>
                                     <Typography variant="body2">Disponible: {row.dateAvailable}</Typography>
-                                    <Typography variant="body2">AC: {row.hasAC ? 'Sí' : 'No'}</Typography>
+                                    <Typography variant="body2">AC: {row.hasAc ? 'Sí' : 'No'}</Typography>
                                 </CardContent>
                                 <CardActions>
-                                    {(type === 'all-flats' || type === 'my-flats') && (
+                                    {(type === 'all-flats' || type === 'favorites') && (
                                         <Button
                                             variant="outlined"
                                             color="primary"

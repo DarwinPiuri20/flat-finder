@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const controller = require('./controller');
 const authController = require('../auth/controller');
-const upload = require('../../services/multer'); // Importar la configuración de multer
+const upload = require('../../services/multer');
 
-// Rutas para flats
 router.post('/', authController.protect, authController.isOwner, upload.single('image'), controller.addFlat);
 router.get('/', controller.getAllFlats);
 router.patch('/:id', authController.protect, authController.isOwner, controller.updateFlat);
@@ -17,5 +16,9 @@ router.get('/favorites/:id', authController.protect, controller.getFavorites);
 
 // Ruta de prueba para subir una imagen
 router.post('/:id/upload-image', authController.protect, authController.isOwner, upload.single('image'), controller.uploadImage);
+
+// Rutas para mensajes
+router.get('/:flatId/messages/:otherUserId', authController.protect, controller.getMessages);
+router.post('/:flatId/messages', authController.protect, controller.createMessage);
 
 module.exports = router;

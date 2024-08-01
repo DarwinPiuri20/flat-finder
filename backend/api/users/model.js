@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const Schema = mongoose.Schema;
 
@@ -47,9 +48,6 @@ const UserSchema = new Schema({
         type: String,
         enum: ['admin', 'renter', 'owner'],
         default: 'renter'
-    },
-    image: {
-        type: String // Store image URL
     }
 }, { timestamps: true });
 
@@ -59,14 +57,7 @@ UserSchema.pre('save', async function(next) {
 
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
-});
-
-// Middleware to set permissions based on role
-UserSchema.pre('save', function(next) {
-    if (!this.isModified('role')) return next();
-
-    this.permission = this.role; // Simplified assignment
+    this.passwordChangedAt = Date.now();
     next();
 });
 
@@ -77,14 +68,17 @@ UserSchema.methods = {
     },
 
     generatePasswordResetToken: function() {
-        this.resetPasswordToken = uuidv4();
-        return this.resetPasswordToken;
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        this.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+        this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+        return resetToken;
     },
 
     resetPassword: async function(newPassword) {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(newPassword, salt);
-        this.resetPasswordToken = null;
+        this.resetPasswordToken = undefined;
+        this.passwordResetExpires = undefined;
         this.passwordChangedAt = Date.now();
         return this.save();
     },

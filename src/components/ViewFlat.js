@@ -39,9 +39,6 @@ const styles = {
     textField: {
         marginBottom: 16,
     },
-    switchLabel: {
-        marginRight: 8,
-    },
     chatSection: {
         backgroundColor: '#ECF0F1',
         padding: '16px',
@@ -50,7 +47,7 @@ const styles = {
     },
 };
 
-const ViewFlat = () => {
+const ViewFlat = ({ flatId, ownerId }) => {
     const { id } = useParams();
     const [flat, setFlat] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -129,22 +126,39 @@ const ViewFlat = () => {
     const handleSendMessage = async () => {
         try {
             if (!newMessage.trim()) {
-                return; // No enviar mensajes vacíos
+                return;
             }
-            const api = new Api();
-            const response = await api.post(`flats/${id}/messages`, {
+    
+            const receiverId = flat.ownerId;
+            console.log('Receiver ID:', receiverId); // Loguear receiverId para depuración
+            if (!receiverId) {
+                console.error('Invalid receiver ID:', receiverId); // Loguear receiverId inválido para depuración
+                return;
+            }
+    
+            const payload = {
                 content: newMessage,
-                receiverId: flat.ownerId
-            }, {
+                receiverId
+            };
+            console.log('Sending message payload:', payload); // Loguear el payload para depuración
+    
+            const api = new Api();
+            const response = await api.post(`flats/${id}/messages`, payload, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
             });
-
+    
+            console.log('Message sent successfully:', response.data); // Loguear respuesta exitosa
             setMessages([...messages, response.data.message]);
             setNewMessage('');
         } catch (error) {
             console.error('Error sending message:', error);
+            if (error.response) {
+                console.error('Response data:', error.response.data); // Loguear respuesta detallada del error
+                console.error('Response status:', error.response.status);
+                console.error('Response headers:', error.response.headers);
+            }
         }
     };
 

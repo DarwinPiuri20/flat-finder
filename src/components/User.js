@@ -34,7 +34,7 @@ const UserProfile = () => {
         const fetchUser = async () => {
             try {
                 const api = new Api();
-                const response = await api.get(`user/${id}`);
+                const response = await api.get(`users/user/${id}`);
                 setUser(response.data.data);
             } catch (error) {
                 setError(error.response?.data?.message || 'An error occurred');

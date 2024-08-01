@@ -9,6 +9,7 @@ export default function MyFlats() {
     <div>
       <Header />
       <RegisterFlat />
+      
     </div>
   );
 }

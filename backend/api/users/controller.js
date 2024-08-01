@@ -2,15 +2,14 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const User = require('./model');
-const Email = require('../../services/email');
+const sendEmail = require('../../services/email');
 const upload = require('../../services/multer');
 
 exports.uploadUserImage = upload.single('image');
 
-// Update user information
 exports.updateUser = async (req, res) => {
     try {
-        let userId = req.params.id || req.user._id;
+        const userId = req.params.id;
 
         if (!mongoose.Types.ObjectId.isValid(userId)) {
             return res.status(400).json({ status: 'fail', message: 'Invalid user ID' });
@@ -34,8 +33,44 @@ exports.updateUser = async (req, res) => {
     }
 };
 
-// Delete a user
+exports.updateUserLogged = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ status: 'fail', message: 'Invalid user ID' });
+        }
+
+        const updateData = req.body;
+        if (req.file) {
+            updateData.image = req.file.path;
+        }
+
+        const user = await User.findByIdAndUpdate(userId, updateData, { new: true });
+
+        if (!user) {
+            return res.status(404).json({ status: 'fail', message: 'User not found' });
+        }
+
+        res.status(200).json({ status: 'success', data: user });
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ status: 'fail', message: 'Server error: ' + error.message });
+    }
+};
+
 exports.deleteUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ status: 'fail', message: 'User not found' });
+        await user.deleteOne();
+        res.status(200).json({ status: 'success', message: 'User deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ status: 'fail', message: 'Server error: ' + error.message });
+    }
+};
+
+exports.getUserById = async (req, res) => {
     try {
         const userId = req.params.id;
 
@@ -43,23 +78,7 @@ exports.deleteUser = async (req, res) => {
             return res.status(400).json({ status: 'fail', message: 'Invalid user ID' });
         }
 
-        const user = await User.findByIdAndDelete(userId);
-
-        if (!user) {
-            return res.status(404).json({ status: 'fail', message: 'User not found' });
-        }
-
-        res.status(200).json({ status: 'success', message: 'User deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting user:', error);
-        res.status(500).json({ status: 'fail', message: 'Server error: ' + error.message });
-    }
-};
-
-// Get user by ID
-exports.getUserById = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
+        const user = await User.findById(userId);
 
         if (!user) {
             return res.status(404).json({ status: 'fail', message: 'User not found' });
@@ -70,8 +89,8 @@ exports.getUserById = async (req, res) => {
         console.error('Error fetching user by ID:', error);
         res.status(500).json({ status: 'fail', message: 'Server error: ' + error.message });
     }
-}
-// Get current user
+};
+
 exports.getCurrentUser = async (req, res) => {
     try {
         if (!req.user || !req.user._id) {
@@ -97,7 +116,6 @@ exports.getCurrentUser = async (req, res) => {
     }
 };
 
-// Get all users with filters and sorting
 exports.getAllUsers = async (req, res) => {
     try {
         const { filter = {}, orderBy = 'firstName', order = 'asc', page = 1, limit = 10 } = req.query;
@@ -121,7 +139,6 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-// Generate password reset token
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
 
@@ -132,15 +149,11 @@ exports.forgotPassword = async (req, res) => {
             return res.status(404).json({ status: 'fail', message: 'No user found with that email address' });
         }
 
-        // Generate and hash token
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-        user.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+        const resetToken = user.generatePasswordResetToken();
         await user.save();
 
-        // Send email
         const resetURL = `http://localhost:3000/reset-password/${resetToken}`;
-        await Email({
+        await sendEmail({
             email: user.email,
             subject: 'Password Reset Token',
             message: `You requested a password reset. Please click the link below to reset your password:\n\n${resetURL}`
@@ -153,7 +166,6 @@ exports.forgotPassword = async (req, res) => {
     }
 };
 
-// Reset password
 exports.resetPassword = async (req, res) => {
     const { password } = req.body;
     const { token } = req.params;
@@ -165,7 +177,7 @@ exports.resetPassword = async (req, res) => {
 
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
         const user = await User.findOne({
-            passwordResetToken: hashedToken,
+            resetPasswordToken: hashedToken,
             passwordResetExpires: { $gt: Date.now() }
         });
 
@@ -174,8 +186,9 @@ exports.resetPassword = async (req, res) => {
         }
 
         user.password = await bcrypt.hash(password, 10);
-        user.passwordResetToken = undefined;
+        user.resetPasswordToken = undefined;
         user.passwordResetExpires = undefined;
+        user.passwordChangedAt = Date.now();
         await user.save();
 
         res.status(200).json({ status: 'success', message: 'Password reset successfully' });

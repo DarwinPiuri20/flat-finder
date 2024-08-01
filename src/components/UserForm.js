@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Box, Button, TextField, Grid, Snackbar, Alert, Card, CardMedia, Typography, MenuItem } from '@mui/material';
-import { Api } from '../services/api'; // Importa tu clase Api
+import { Api } from '../services/api';
 
 const styles = {
     root: {
         display: "flex",
         flexDirection: "column",
         maxWidth: 600,
-        margin: "24px auto", // Increased top and bottom margin for better separation
+        margin: "24px auto",
         padding: 8,
         borderRadius: 10,
         boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.1)",
@@ -40,7 +40,7 @@ const styles = {
         marginRight: 8,
     },
     inputContainer: {
-        marginTop: 16, // Increased top margin for better separation from the title
+        marginTop: 16,
     }
 };
 
@@ -64,7 +64,7 @@ export default function UserForm({ type, userId }) {
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [alertSeverity, setAlertSeverity] = useState("error");
     const [password, setPassword] = useState("");
-    let pathImg; // Declare pathImg variable here
+    let pathImg; 
 
     const api = new Api();
 
@@ -80,7 +80,7 @@ export default function UserForm({ type, userId }) {
     if (type === "update") {
         nameButton = "Update";
     }
-
+    
     const getUserData = async () => {
         try {
             const response = await api.get('users/' + userId);
@@ -95,7 +95,7 @@ export default function UserForm({ type, userId }) {
 
     const getCurrentUserData = async () => {
         try {
-            const response = await api.get('users/user-logged'); // Ajusta la ruta según tu API
+            const response = await api.get('users/user-logged');
             setUser(response.data.data);
             setRole(response.data.data.role);
             setUserLoaded(true);
@@ -148,7 +148,7 @@ export default function UserForm({ type, userId }) {
                 setAlertSeverity("success");
                 resetFields();
             } if (type === "update") {
-                await api.patch(`users/user/${userId}`, userToSend);
+                await api.patch(`users/user-logged`, userToSend);
                 setAlertMessage("User updated");
                 setAlertSeverity("success");
             } if (type === "view") {
@@ -238,17 +238,7 @@ export default function UserForm({ type, userId }) {
                             <Card
                                 sx={{ maxWidth: 200, borderRadius: '10px', overflow: 'hidden', marginBottom: '0.5rem' }}
                             >
-                                <CardMedia
-                                    component="img"
-                                    height="100"
-                                    image={user.imgPerson}
-                                    alt="Person"
-                                    style={{
-                                        maxHeight: 200,
-                                        maxWidth: "100%",
-                                        objectFit: "cover",
-                                    }}
-                                />
+                            
                             </Card>
                         )}
 
@@ -342,18 +332,6 @@ export default function UserForm({ type, userId }) {
                                 </Box>
                             </Grid>
 
-                            {type === "update" && (
-                                <Grid item xs={12}>
-                                    <input
-                                        type="file"
-                                        id="file"
-                                        placeholder="Add image"
-                                        onChange={fileHandler}
-                                        style={{ marginBottom: "0.5rem" }}
-                                    />
-                                </Grid>
-                            )}
-
                             {type !== "view" && (
                                 <Grid item xs={12}>
                                     <Button
@@ -387,3 +365,4 @@ export default function UserForm({ type, userId }) {
         </>
     );
 }
+

@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, TextField, Grid, CircularProgress, Typography, Switch } from "@mui/material";
+import {
+    Box,
+    Button,
+    TextField,
+    Grid,
+    CircularProgress,
+    Typography,
+    Switch,
+    Snackbar,
+    Alert
+} from "@mui/material";
 import { Api } from "../services/api";
 
 const styles = {
@@ -33,11 +43,14 @@ export default function FlatForm({ type, id }) {
         hasAc: false,
         yearBuilt: "",
         rentPrice: "",
-        dateAvailable: new Date().toISOString().split('T')[0], // Ajustado para manejar la fecha
+        dateAvailable: new Date().toISOString().split('T')[0],
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [file, setFile] = useState(null);
+    const [alertMessage, setAlertMessage] = useState("");
+    const [isAlertOpen, setIsAlertOpen] = useState(false);
+    const [alertSeverity, setAlertSeverity] = useState("error");
 
     useEffect(() => {
         if (type !== "create") {
@@ -92,10 +105,25 @@ export default function FlatForm({ type, id }) {
         try {
             const api = new Api();
             let result;
-            if (type === "create" || type === "edit") {
+            if (type === "create") {
                 result = await api.post("flats", updatedFlat);
+                setAlertMessage("Flat created successfully");
+                setAlertSeverity("success");
+                setFlat({
+                    city: "",
+                    streetName: "",
+                    streetNumber: "",
+                    areaSize: "",
+                    hasAc: false,
+                    yearBuilt: "",
+                    rentPrice: "",
+                    dateAvailable: new Date().toISOString().split('T')[0],
+                });
+                setFile(null);
             } else {
                 result = await api.put(`flats/${id}`, updatedFlat);
+                setAlertMessage("Flat updated successfully");
+                setAlertSeverity("success");
             }
 
             if (file) {
@@ -110,13 +138,22 @@ export default function FlatForm({ type, id }) {
 
             if (result.data) {
                 setFlat(result.data.flat);
-                alert(`${type === "create" ? "Flat created" : "Flat updated"} successfully`);
             } else {
                 setError("No flat data found");
             }
         } catch (error) {
-            setError(error.response?.data?.message || "An error occurred");
+            setAlertMessage(error.response?.data?.message || "An error occurred");
+            setAlertSeverity("error");
+        } finally {
+            setIsAlertOpen(true);
         }
+    };
+
+    const handleAlertClose = (event, reason) => {
+        if (reason === "clickaway") {
+            return;
+        }
+        setIsAlertOpen(false);
     };
 
     return (
@@ -232,14 +269,7 @@ export default function FlatForm({ type, id }) {
                                     required
                                 />
                             </Grid>
-                            <Grid item xs={12}>
-                                <input
-                                    type="file"
-                                    id="file"
-                                    className="form-control"
-                                    onChange={handleFileChange}
-                                />
-                            </Grid>
+                            
                             <Grid item xs={12}>
                                 <div className="justify-center flex">
                                     <Button type="submit" variant="contained" style={styles.button}>
@@ -249,6 +279,11 @@ export default function FlatForm({ type, id }) {
                             </Grid>
                         </Grid>
                     </form>
+                    <Snackbar open={isAlertOpen} autoHideDuration={6000} onClose={handleAlertClose}>
+                        <Alert onClose={handleAlertClose} severity={alertSeverity}>
+                            {alertMessage}
+                        </Alert>
+                    </Snackbar>
                 </>
             )}
         </Box>
